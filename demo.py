@@ -11,6 +11,13 @@ from dataset import RawDataset, AlignCollate
 from model import Model
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+import cv2
+from dataset import tensor2im
+import matplotlib
+import matplotlib.pyplot as plt
+import torchvision.transforms as transforms
+pilTrans = transforms.ToPILImage()
+import mouse_crop
 
 def demo(opt):
     """ model configuration """
@@ -33,7 +40,9 @@ def demo(opt):
     model.load_state_dict(torch.load(opt.saved_model, map_location=device))
 
     # prepare data. two demo images from https://github.com/bgshih/crnn#run-demo
-    AlignCollate_demo = AlignCollate(imgH=opt.imgH, imgW=opt.imgW, keep_ratio_with_pad=opt.PAD)
+    AlignCollate_demo = AlignCollate(imgH=480, imgW=848, keep_ratio_with_pad=opt.PAD)
+    # AlignCollate_demo = AlignCollate(imgH=87, imgW=150, keep_ratio_with_pad=opt.PAD)
+
     demo_data = RawDataset(root=opt.image_folder, opt=opt)  # use RawDataset
     demo_loader = torch.utils.data.DataLoader(
         demo_data, batch_size=opt.batch_size,
@@ -46,7 +55,21 @@ def demo(opt):
     with torch.no_grad():
         for image_tensors, image_path_list in demo_loader:
             batch_size = image_tensors.size(0)
-            image = image_tensors.to(device)
+            image_np = tensor2im(image_tensors[0])
+            image, rec = mouse_crop.mouse_crop(image_np)
+            # # pilTrans = transforms.ToPILImage()
+            # # resizeTrans = transforms.Resize((opt.imgH, opt.imgW))
+            # # image = resizeTrans(pilTrans(image))
+            toTensorTrans = transforms.ToTensor()
+            # image = torch.from_numpy(image[...,0])
+            image = toTensorTrans(image[...,0])
+            image = image.type(torch.float32)
+            image = image.sub_(0.5).div_(0.5)
+            image = image.expand(1,-1, -1, -1)
+            image = image.to(device)
+
+
+            # image = image_tensors.to(device)
             # For max length prediction
             length_for_pred = torch.IntTensor([opt.batch_max_length] * batch_size).to(device)
             text_for_pred = torch.LongTensor(batch_size, opt.batch_max_length + 1).fill_(0).to(device)
@@ -77,11 +100,21 @@ def demo(opt):
 
             preds_prob = F.softmax(preds, dim=2)
             preds_max_prob, _ = preds_prob.max(dim=2)
+            image_full = cv2.imread('/home/zvipe/Corona/deep-text-recognition-benchmark/demo_image/11.jpg')
             for img_name, pred, pred_max_prob in zip(image_path_list, preds_str, preds_max_prob):
                 if 'Attn' in opt.Prediction:
                     pred_EOS = pred.find('[s]')
                     pred = pred[:pred_EOS]  # prune after "end of sentence" token ([s])
                     pred_max_prob = pred_max_prob[:pred_EOS]
+
+                    font = cv2.FONT_HERSHEY_SIMPLEX
+                    fontScale = 0.5
+                    # Blue color in BGR
+                    color = (255, 0, 0)
+                    imm =cv2.rectangle(image_full.copy(),(rec[0],rec[1]),(rec[2],rec[3]),(0,255,0),2)
+                    imm = cv2.putText(imm, pred, (rec[0],rec[1]-5), font,
+                                        fontScale, color, 1, cv2.LINE_AA)
+                    cv2.imwrite('/home/zvipe/Corona/deep-text-recognition-benchmark/demo_image/11.jpg',imm)
 
                 # calculate confidence score (= multiply of pred_max_prob)
                 confidence_score = pred_max_prob.cumprod(dim=0)[-1]
@@ -98,7 +131,7 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=192, help='input batch size')
     parser.add_argument('--saved_model', required=True, help="path to saved_model to evaluation")
     """ Data processing """
-    parser.add_argument('--batch_max_length', type=int, default=25, help='maximum-label-length')
+    parser.add_argument('--batch_max_length', type=int, default=5, help='maximum-label-length')
     parser.add_argument('--imgH', type=int, default=32, help='the height of the input image')
     parser.add_argument('--imgW', type=int, default=100, help='the width of the input image')
     parser.add_argument('--rgb', action='store_true', help='use rgb input')
