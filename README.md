@@ -20,6 +20,23 @@ The difference between our paper and ICDAR challenge is summarized [here](https:
 **May 17, 2019**: uploaded resources in Baidu Netdisk also, added [Run demo](https://github.com/clovaai/deep-text-recognition-benchmark#run-demo-with-pretrained-model). (check [@sharavsambuu's](https://github.com/sharavsambuu) [colab demo also](https://colab.research.google.com/drive/1PHnc_QYyf9b1_KJ1r15wYXaOXkdm1Mrk)) <br>
 **May 9, 2019**: PyTorch version updated from 1.0.1 to 1.1.0, use torch.nn.CTCLoss instead of torch-baidu-ctc, and various minor updated.
 
+## Corona Monitor txt recognition
+###  Environment setup
+- This work was tested with PyTorch 1.4.0, CUDA 10.0, python 3.6 and Ubuntu 16.04. 
+-  Clone the repository
+```
+git clone https://github.com/zvikapeter/deep-text-recognition-benchmark.git
+cd deep-text-recognition-benchmark
+```
+- Requirements 
+```
+pip3 install -r requirements.txt
+```
+### Run demo with pretrained model
+
+1. Download pretrained model from [here](https://drive.google.com/drive/folders/15WPsuPJDCzhp2SvYZLRj8mAlT3zmoAMW) to the pre trained folder in ```deep-text-recognition-benchmark\PreTrained```
+2. From ```deep-text-recognition-benchmark\PreTrained``` run ``` python monitor_txt_recognition.py```
+
 ## Getting Started
 ### Dependency
 - This work was tested with PyTorch 1.3.1, CUDA 10.1, python 3.6 and Ubuntu 16.04. <br> You may need `pip3 install torch==1.3.1`. <br>
