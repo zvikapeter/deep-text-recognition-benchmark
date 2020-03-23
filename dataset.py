@@ -294,8 +294,10 @@ class AlignCollate(object):
         self.imgW = imgW
         self.keep_ratio_with_pad = keep_ratio_with_pad
 
-    def __call__(self, batch):
-        batch = filter(lambda x: x is not None, batch)
+    def __call__(self, batch_):
+        batch = filter(lambda x: x is not None, batch_)
+        self.imgW  =batch_[0][0].size[0]
+        self.imgH = batch_[0][0].size[1]
         images, labels = zip(*batch)
 
         if self.keep_ratio_with_pad:  # same concept with 'Rosetta' paper

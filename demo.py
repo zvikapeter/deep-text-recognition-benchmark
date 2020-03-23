@@ -1,5 +1,6 @@
 import string
 import argparse
+import numpy as np
 
 import torch
 import torch.backends.cudnn as cudnn
@@ -40,7 +41,7 @@ def demo(opt):
     model.load_state_dict(torch.load(opt.saved_model, map_location=device))
 
     # prepare data. two demo images from https://github.com/bgshih/crnn#run-demo
-    AlignCollate_demo = AlignCollate(imgH=480, imgW=848, keep_ratio_with_pad=opt.PAD)
+    AlignCollate_demo = AlignCollate(imgH=640, imgW=352, keep_ratio_with_pad=opt.PAD)
     # AlignCollate_demo = AlignCollate(imgH=87, imgW=150, keep_ratio_with_pad=opt.PAD)
 
     demo_data = RawDataset(root=opt.image_folder, opt=opt)  # use RawDataset
@@ -56,18 +57,18 @@ def demo(opt):
         for image_tensors, image_path_list in demo_loader:
             batch_size = image_tensors.size(0)
             image_np = tensor2im(image_tensors[0])
-            image, rec = mouse_crop.mouse_crop(image_np)
+            images_list, recs = mouse_crop.mouse_crop(image_np)
             # # pilTrans = transforms.ToPILImage()
             # # resizeTrans = transforms.Resize((opt.imgH, opt.imgW))
             # # image = resizeTrans(pilTrans(image))
-            toTensorTrans = transforms.ToTensor()
-            # image = torch.from_numpy(image[...,0])
-            image = toTensorTrans(image[...,0])
-            image = image.type(torch.float32)
-            image = image.sub_(0.5).div_(0.5)
-            image = image.expand(1,-1, -1, -1)
-            image = image.to(device)
-
+            stackedImages = np.stack(images_list)
+            stackedImages = np.expand_dims(stackedImages, axis=1)
+            stackedImages= stackedImages/255.
+            torchStackedImages = torch.from_numpy(stackedImages[...,0])
+            torchStackedImages = torchStackedImages.type(torch.float32)
+            torchStackedImages = torchStackedImages.sub_(0.5).div_(0.5)
+            # torchStackedImages = torchStackedImages.expand(-1,1, -1, -1)
+            torchStackedImages = torchStackedImages.to(device)
 
             # image = image_tensors.to(device)
             # For max length prediction
@@ -75,7 +76,7 @@ def demo(opt):
             text_for_pred = torch.LongTensor(batch_size, opt.batch_max_length + 1).fill_(0).to(device)
 
             if 'CTC' in opt.Prediction:
-                preds = model(image, text_for_pred)
+                preds = model(torchStackedImages, text_for_pred)
 
                 # Select max probabilty (greedy decoding) then decode index to character
                 preds_size = torch.IntTensor([preds.size(1)] * batch_size)
@@ -84,7 +85,7 @@ def demo(opt):
                 preds_str = converter.decode(preds_index.data, preds_size.data)
 
             else:
-                preds = model(image, text_for_pred, is_train=False)
+                preds = model(torchStackedImages, text_for_pred, is_train=False)
 
                 # select max probabilty (greedy decoding) then decode index to character
                 _, preds_index = preds.max(2)
@@ -100,28 +101,43 @@ def demo(opt):
 
             preds_prob = F.softmax(preds, dim=2)
             preds_max_prob, _ = preds_prob.max(dim=2)
-            image_full = cv2.imread('/home/zvipe/Corona/deep-text-recognition-benchmark/demo_image/11.jpg')
-            for img_name, pred, pred_max_prob in zip(image_path_list, preds_str, preds_max_prob):
+            image_full = cv2.imread(image_path_list[0])
+            imm = image_full.copy()
+            madadim=[]
+            for pred, pred_max_prob,rec in zip(preds_str, preds_max_prob,recs):
                 if 'Attn' in opt.Prediction:
                     pred_EOS = pred.find('[s]')
                     pred = pred[:pred_EOS]  # prune after "end of sentence" token ([s])
                     pred_max_prob = pred_max_prob[:pred_EOS]
 
                     font = cv2.FONT_HERSHEY_SIMPLEX
-                    fontScale = 0.5
+                    fontScale = 0.8
                     # Blue color in BGR
-                    color = (255, 0, 0)
-                    imm =cv2.rectangle(image_full.copy(),(rec[0],rec[1]),(rec[2],rec[3]),(0,255,0),2)
+                    color = (0, 255, 0)
+                    imm =cv2.rectangle(imm,(rec[0],rec[1]),(rec[2],rec[3]),(0,255,0),1)
                     imm = cv2.putText(imm, pred, (rec[0],rec[1]-5), font,
-                                        fontScale, color, 1, cv2.LINE_AA)
-                    cv2.imwrite('/home/zvipe/Corona/deep-text-recognition-benchmark/demo_image/11.jpg',imm)
+                                        fontScale, color, 2, cv2.LINE_AA)
+                    madadim.append(pred)
 
                 # calculate confidence score (= multiply of pred_max_prob)
                 confidence_score = pred_max_prob.cumprod(dim=0)[-1]
 
-                print(f'{img_name:25s}\t{pred:25s}\t{confidence_score:0.4f}')
-                log.write(f'{img_name:25s}\t{pred:25s}\t{confidence_score:0.4f}\n')
+                print(f'{image_path_list[0]:25s}\t{pred:25s}\t{confidence_score:0.4f}')
+                log.write(f'{image_path_list[0]:25s}\t{pred:25s}\t{confidence_score:0.4f}\n')
 
+            head_text =''
+            madadim[-2]=madadim[-2]+'/'+madadim[-1]
+            madadim.pop(-1)
+            madadim_name =['BPM', 'Respiration','SpO2','Bipm']
+            y0, dy = 50,20
+            fontScale = 0.5
+            color = (255, 0, 0)
+            for i,m in enumerate(madadim):
+                y = y0 + i * dy
+                imm = cv2.putText(imm, '{} : {}'.format(madadim_name[i],madadim[i]), (20, y), font,
+                                  fontScale, color, 1, cv2.LINE_AA)
+
+            cv2.imwrite(image_path_list[0].replace('demo_image_monitor','demo_image_monitor_out'), imm)
             log.close()
 
 if __name__ == '__main__':

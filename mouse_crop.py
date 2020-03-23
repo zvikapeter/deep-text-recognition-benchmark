@@ -2,21 +2,19 @@ import cv2
 import numpy as np
 
 cropping = False
-FinishROI =False
+FinishROI = 0
 roi = []
+coordinates = []
 x_start, y_start, x_end, y_end = 0, 0, 0, 0
 
 image = None
 oriImage = None
 
 
-
-
-
 def mouse_crop(image_np):
     def mouse_crop_aux(event, x, y, flags, param):
         # grab references to the global variables
-        global x_start, y_start, x_end, y_end, cropping, roi, FinishROI
+        global x_start, y_start, x_end, y_end, cropping, roi, FinishROI, coordinates
 
         # if the left mouse button was DOWN, start RECORDING
         # (x, y) coordinates and indicate that cropping is being
@@ -38,16 +36,21 @@ def mouse_crop(image_np):
             refPoint = [(x_start, y_start), (x_end, y_end)]
 
             if len(refPoint) == 2:  # when two points were found
-                roi = oriImage[refPoint[0][1]:refPoint[1][1], refPoint[0][0]:refPoint[1][0]]
-                cv2.imshow("Cropped", roi)
-                FinishROI = True
+                roi.append(oriImage[refPoint[0][1]:refPoint[1][1], refPoint[0][0]:refPoint[1][0]])
+                coordinates.append([x_start, y_start, x_end, y_end])
+                #cv2.imshow("Cropped", roi[-1])
+                FinishROI += 1
+
+
 
     image =image_np
     oriImage = image.copy()
     cv2.namedWindow("image")
-    cv2.setMouseCallback("image", mouse_crop_aux)
+    cv2.imshow("image", image)
 
-    while not FinishROI:
+    while FinishROI!=5:
+        cv2.setMouseCallback("image", mouse_crop_aux)
+
         i = image.copy()
 
         if not cropping:
@@ -57,14 +60,16 @@ def mouse_crop(image_np):
             cv2.rectangle(i, (x_start, y_start), (x_end, y_end), (255, 0, 0), 2)
             cv2.imshow("image", i)
 
-
         cv2.waitKey(1)
 
     # close all open windows
     cv2.destroyAllWindows()
 
-    roi_resize = cv2.resize(roi, ( 100, 32))
-    return roi_resize, [x_start, y_start, x_end, y_end]
+    roi_resize=[]
+    for single_roi in roi:
+        roi_resize.append(cv2.resize(single_roi, ( 100, 32)))
+
+    return roi_resize, coordinates
 
 
 if __name__ == '__main__':

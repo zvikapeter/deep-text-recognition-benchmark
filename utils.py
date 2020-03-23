@@ -91,8 +91,13 @@ class AttnLabelConverter(object):
     def decode(self, text_index, length):
         """ convert text-index into text-label. """
         texts = []
-        for index, l in enumerate(length):
-            text = ''.join([self.character[i] for i in text_index[index, :]])
+        # for index, l in enumerate(length):
+        #     text = ''.join([self.character[i] for i in text_index[index,:]])
+        #     texts.append(text)
+        # return texts
+
+        for text_raw in text_index:
+            text = ''.join([self.character[i] for i in text_raw])
             texts.append(text)
         return texts
 
