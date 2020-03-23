@@ -89,7 +89,7 @@ def demo(bboxs_list, image_np ,opt):
 
         log = open(f'./log_demo_result.txt', 'a')
         dashed_line = '-' * 80
-        head = f'{"image_path":25s}\t{"predicted_labels":25s}\tconfidence score'
+        head = f'{"predicted_labels":25s}\tconfidence score'
 
         print(f'{dashed_line}\n{head}\n{dashed_line}')
         log.write(f'{dashed_line}\n{head}\n{dashed_line}\n')
@@ -117,7 +117,7 @@ def demo(bboxs_list, image_np ,opt):
             # calculate confidence score (= multiply of pred_max_prob)
             confidence_score = pred_max_prob.cumprod(dim=0)[-1]
 
-            # print(f'{image_path_list[0]:25s}\t{pred:25s}\t{confidence_score:0.4f}')
+            print(f'{pred:25s}\t{confidence_score:0.4f}')
             # log.write(f'{image_path_list[0]:25s}\t{pred:25s}\t{confidence_score:0.4f}\n')
 
         head_text =''
@@ -184,4 +184,5 @@ if __name__ == '__main__':
     bbox_list = np.load('demo_image_monitor/11_recs.npy')
     image = cv2.imread('demo_image_monitor/11.jpg')
     res = txt_recognition(bboxs_list=bbox_list,image=image)
-    a=1
+    cv2.imwrite('demo_image_monitor_out/res.jpg', res)
+
