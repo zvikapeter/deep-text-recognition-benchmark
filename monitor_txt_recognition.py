@@ -20,6 +20,7 @@ import torchvision.transforms as transforms
 pilTrans = transforms.ToPILImage()
 import mouse_crop
 
+
 def demo(bboxs_list, image_np ,opt):
     """ model configuration """
     if 'CTC' in opt.Prediction:
@@ -30,6 +31,7 @@ def demo(bboxs_list, image_np ,opt):
 
     if opt.rgb:
         opt.input_channel = 3
+
     model = Model(opt)
     print('model input parameters', opt.imgH, opt.imgW, opt.num_fiducial, opt.input_channel, opt.output_channel,
           opt.hidden_size, opt.num_class, opt.batch_max_length, opt.Transformation, opt.FeatureExtraction,
@@ -51,6 +53,8 @@ def demo(bboxs_list, image_np ,opt):
     model.eval()
     recs = bboxs_list
     with torch.no_grad():
+        #
+
         batch_size = len(images_list)
         # images_list, recs = mouse_crop.mouse_crop(image_np)
         # # pilTrans = transforms.ToPILImage()
@@ -136,7 +140,6 @@ def demo(bboxs_list, image_np ,opt):
         # cv2.imwrite(image_path_list[0].replace('demo_image_monitor','demo_image_monitor_out'), imm)
         # log.close()
 
-
 def txt_recognition(image, bboxs_list):
 
     parser = argparse.ArgumentParser()
@@ -180,9 +183,10 @@ def txt_recognition(image, bboxs_list):
 
 if __name__ == '__main__':
 
-
     bbox_list = np.load('demo_image_monitor/11_recs.npy')
     image = cv2.imread('demo_image_monitor/11.jpg')
+
     res = txt_recognition(bboxs_list=bbox_list,image=image)
+
     cv2.imwrite('demo_image_monitor_out/res.jpg', res)
 

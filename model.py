@@ -90,3 +90,5 @@ class Model(nn.Module):
             prediction = self.Prediction(contextual_feature.contiguous(), text, is_train, batch_max_length=self.opt.batch_max_length)
 
         return prediction
+
+# x = torch.jit.script(Model())
